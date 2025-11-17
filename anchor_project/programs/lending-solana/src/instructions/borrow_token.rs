@@ -18,8 +18,10 @@ pub fn borrow_token(ctx: Context<BorrowToken>, borrow_amount: u64) -> Result<()>
     // Lending market's total borrowed amount after this new borrow
     let lending_market_total_borrowed = ctx.accounts.lending_market.borrowed_amount.checked_add(borrow_amount).ok_or(LendingError::MarketBorrowOverflow)?;
 
+    // Ensure that lending market has enough tokens in the loan vault to lend out
+    require!(lending_market_total_borrowed <= ctx.accounts.loan_vault.amount, LendingError::InsufficientLoanVaultLiquidity);
     // Ensure that if user borrow this amount, he or she does not exceed the maximum allowable borrow
-    require!(user_total_borrowed <= max_allowable_borrow, LendingError::UserBorrowOverflow);
+    require!(user_total_borrowed <= max_allowable_borrow, LendingError::UserMaxBorrowExceeded);
 
     // Transfer the total borrowed amount from the loan vault to the user's loan token account
     transfer(

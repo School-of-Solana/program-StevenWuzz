@@ -20,4 +20,6 @@ pub enum LendingError {
     MismatchedLoanVaultOwner,
     #[msg("Collateral and loan mints cannnot be the same")]
     IdenticalCollateralAndLoanMints,
+    #[msg("Lending market does not have enough tokens in the loan vault to lend out")]
+    InsufficientLoanVaultLiquidity,
 }
