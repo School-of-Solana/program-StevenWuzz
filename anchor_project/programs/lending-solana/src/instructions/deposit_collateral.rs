@@ -25,7 +25,7 @@ pub fn deposit_collateral(ctx: Context<DepositCollateral>, collateral_amount: u6
         collateral_amount,
     )?;
 
-    // Update the collateral amount in the user account and lending market after the transfer is successful
+    // Update the deposited collateral amount in the user account and lending market after the transfer is successful
     ctx.accounts.user_account.deposited_collateral_amount = user_total_collateral;
     ctx.accounts.lending_market.collateral_amount = lending_market_total_collateral;
 
@@ -41,12 +41,13 @@ pub struct DepositCollateral<'info> {
         has_one = lending_market,
     )]
     pub user_account: Account<'info, UserAccount>,
+    #[account(mut)]
     pub lending_market: Account<'info, LendingMarket>,
     #[account(mut)]
     pub user_collateral_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = collateral_vault.key() == lending_market.collateral_vault @ LendingError::MismatchedCollateralVault,
+        constraint = collateral_vault.owner == lending_market.key() @ LendingError::MismatchedCollateralVaultOwner,
         constraint = collateral_vault.mint == lending_market.collateral_mint @ LendingError::MistmatchedCollateralMint,
     )]
     pub collateral_vault: Account<'info, TokenAccount>,

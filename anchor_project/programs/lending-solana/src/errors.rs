@@ -12,10 +12,12 @@ pub enum LendingError {
     UserMaxBorrowExceeded,
     #[msg("Lending market's total collateral has overflowed")]
     MarketCollateralOverflow,
-    #[msg("The provided collateral vault does not match the lending market's collateral vault")]
-    MismatchedCollateralVault,
+    #[msg("The lending market does not own the provided collateral vault")]
+    MismatchedCollateralVaultOwner,
     #[msg("The provided collateral mint does not match the lending market's collateral mint")]
     MistmatchedCollateralMint,
-    #[msg("The provided loan vault does not match the lending market's loan vault")]
-    MismatchedLoanVault,
+    #[msg("The lending market does not own the provided loan vault")]
+    MismatchedLoanVaultOwner,
+    #[msg("Collateral and loan mints cannnot be the same")]
+    IdenticalCollateralAndLoanMints,
 }

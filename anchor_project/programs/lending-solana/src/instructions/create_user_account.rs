@@ -23,7 +23,7 @@ pub struct CreateUserAccount<'info> {
         init,
         payer = user,
         space = 8 + UserAccount::INIT_SPACE,
-        seeds = [b"user-account", user.key().as_ref(), lending_market.key().as_ref()],
+        seeds = [b"user-account", user.key().as_ref()],
         bump
     )]
     pub user_account: Account<'info, UserAccount>,

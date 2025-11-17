@@ -1,9 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, Mint, TokenAccount};
 
-use crate::states::*;
+use crate::{errors::LendingError, states::*};
 
 pub fn initialize_lending_market(ctx: Context<InitializeLendingMarket>) -> Result<()> {
+    require!(
+        ctx.accounts.collateral_mint.key() != ctx.accounts.loan_mint.key(),
+        LendingError::IdenticalCollateralAndLoanMints,
+    );
+
     let lending_market = &mut ctx.accounts.lending_market;
 
     lending_market.collateral_mint = ctx.accounts.collateral_mint.key();
@@ -22,10 +27,10 @@ pub fn initialize_lending_market(ctx: Context<InitializeLendingMarket>) -> Resul
 #[derive(Accounts)]
 pub struct InitializeLendingMarket<'info> {
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub payer: Signer<'info>,
     #[account(
         init, 
-        payer = user, 
+        payer = payer,
         space = 8 + LendingMarket::INIT_SPACE,
         seeds = [b"lending-market"],
         bump
@@ -34,7 +39,7 @@ pub struct InitializeLendingMarket<'info> {
     pub system_program: Program<'info, System>,
     #[account(
         init,
-        payer = user,
+        payer = payer,
         seeds = [b"collateral-vault", lending_market.key().as_ref()],
         bump,
         token::mint = collateral_mint,
@@ -44,7 +49,7 @@ pub struct InitializeLendingMarket<'info> {
     pub collateral_mint: Account<'info, Mint>,
     #[account(
         init,
-        payer = user,
+        payer = payer,
         seeds = [b"loan-vault", lending_market.key().as_ref()],
         bump,
         token::mint = loan_mint,

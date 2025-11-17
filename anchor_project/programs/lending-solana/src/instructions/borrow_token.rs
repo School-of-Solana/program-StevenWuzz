@@ -54,12 +54,13 @@ pub struct BorrowToken<'info> {
         has_one = lending_market,
     )]
     pub user_account: Account<'info, UserAccount>,
+    #[account(mut)]
     pub lending_market: Account<'info, LendingMarket>,
     #[account(mut)]
     pub user_loan_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = loan_vault.key() == lending_market.loan_vault @ LendingError::MismatchedLoanVault,
+        constraint = loan_vault.owner == lending_market.key() @ LendingError::MismatchedLoanVaultOwner,
         constraint = loan_vault.mint == lending_market.loan_mint @ LendingError::MistmatchedCollateralMint,
     )]
     pub loan_vault: Account<'info, TokenAccount>,
