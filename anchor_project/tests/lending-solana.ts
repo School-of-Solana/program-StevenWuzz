@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LendingSolana } from "../target/types/lending_solana";
-import { createMint, TOKEN_PROGRAM_ID, getAccount, createAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getAccount, createAssociatedTokenAccount } from "@solana/spl-token";
 import { assert } from "chai";
 
 describe("lending-solana", () => {
@@ -9,6 +9,12 @@ describe("lending-solana", () => {
   const provider = anchor.AnchorProvider.local();
   anchor.setProvider(provider);
   const payer = provider.wallet.payer;
+  const LENDING_MARKET_SEED = "lending-market-v2";
+  const COLLATERAL_MINT_SEED = "collateral-mint-v2";
+  const COLLATERAL_VAULT_SEED = "collateral-vault-v2";
+  const LOAN_MINT_SEED = "loan-mint-v2";
+  const LOAN_VAULT_SEED = "loan-vault-v2";
+  const USER_ACCOUNT_SEED = "user-account-v2";
 
   const airdrop = async (connection: any, address: any, amount = 1000000000) => {
     await connection.confirmTransaction(await connection.requestAirdrop(address, amount), "confirmed");
@@ -20,34 +26,17 @@ describe("lending-solana", () => {
       program.programId
     );
   }
-  const [lendingMarketPda] = getPda("lending-market");
-  const [collateralVaultPda] = getPda("collateral-vault", lendingMarketPda);
-  const [loanVaultPda] = getPda("loan-vault", lendingMarketPda);
-
-  let collateralMint, loanMint: anchor.web3.PublicKey;
-  before(async () => {
-    collateralMint = await createMint(
-      provider.connection,
-      payer,
-      payer.publicKey,
-      null,
-      6
-    );
-
-    loanMint = await createMint(
-      provider.connection,
-      payer,
-      payer.publicKey,
-      null,
-      6
-    ); 
-  });
+  const [lendingMarketPda] = getPda(LENDING_MARKET_SEED);
+  const [collateralMintPda] = getPda(COLLATERAL_MINT_SEED, lendingMarketPda);
+  const [collateralVaultPda] = getPda(COLLATERAL_VAULT_SEED, lendingMarketPda);
+  const [loanMintPda] = getPda(LOAN_MINT_SEED, lendingMarketPda);
+  const [loanVaultPda] = getPda(LOAN_VAULT_SEED, lendingMarketPda);
 
   const initializeLendingMarket = async () => {
     await program.methods.initializeLendingMarket().accounts({
       lendingMarket: lendingMarketPda,
-      collateralMint,
-      loanMint,
+      collateralMint: collateralMintPda,
+      loanMint: loanMintPda,
       collateralVault: collateralVaultPda,
       loanVault: loanVaultPda,
       systemProgram: anchor.web3.SystemProgram.programId,
@@ -55,51 +44,50 @@ describe("lending-solana", () => {
     }).signers([payer]).rpc();
   }
   
+  const fundLoanVault = async (amount: number | anchor.BN) => {
+    await program.methods.fundLoanVault(new anchor.BN(amount)).accounts({
+      authority: payer.publicKey,
+      lendingMarket: lendingMarketPda,
+      loanMint: loanMintPda,
+      loanVault: loanVaultPda,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([payer]).rpc();
+  }
+  const closeLendingMarket = async () => {
+    await program.methods.closeLendingMarket().accounts({
+      authority: payer.publicKey,
+      lendingMarket: lendingMarketPda,
+      collateralMint: collateralMintPda,
+      loanMint: loanMintPda,
+      collateralVault: collateralVaultPda,
+      loanVault: loanVaultPda,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([payer]).rpc();
+  }
+  
   describe("Initialize Lending Market", () => {
-    it("Should fail when collateral and loan mints are the same", async () => {
-    let flag = "This should fail";
-
-    try {
-      await program.methods.initializeLendingMarket().accounts({
-        lendingMarket: lendingMarketPda,
-        collateralMint: collateralMint,
-        loanMint: collateralMint, // Intentionally using the same mint for both
-        collateralVault: collateralVaultPda,
-        loanVault: loanVaultPda,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      }).signers([payer]).rpc();
-
-      assert.fail("Should have thrown an error due to identical mints");
-      } catch (err) {
-        flag = "Failed";
-        assert.isTrue(err.toString().includes("Collateral and loan mints cannnot be the same"));
-      }
-    
-      assert.strictEqual(flag, "Failed", "Initialization with identical mints should have failed");
-    });
-
     it("Initializes the lending market", async () => {
       await initializeLendingMarket();
 
       // Verify the properties of an initial lending market account
       const lendingMarket = await program.account.lendingMarket.fetch(lendingMarketPda);
+      assert.ok(lendingMarket.authority.equals(payer.publicKey), "Authority mismatch");
       assert.ok(lendingMarket.collateralRatioBps === 12000, "Collateral ratio mismatch");
       assert.ok(lendingMarket.interestRateBps === 500, "Interest rate mismatch");
-      assert.ok(lendingMarket.collateralMint.equals(collateralMint), "Collateral mint mismatch");
-      assert.ok(lendingMarket.loanMint.equals(loanMint), "Loan mint mismatch");
+      assert.ok(lendingMarket.collateralMint.equals(collateralMintPda), "Collateral mint mismatch");
+      assert.ok(lendingMarket.loanMint.equals(loanMintPda), "Loan mint mismatch");
       assert.ok(lendingMarket.collateralVault.equals(collateralVaultPda), "Collteral vault mismatch");
       assert.ok(lendingMarket.loanVault.equals(loanVaultPda), "Loan vault mismatch");
 
       // Verify the properties of the collateral vault token account
       const collateralVault = await getAccount(provider.connection, collateralVaultPda);
-      assert.ok(collateralVault.mint.equals(collateralMint), "Collateral vault's mint ownership mismatch");
+      assert.ok(collateralVault.mint.equals(collateralMintPda), "Collateral vault's mint ownership mismatch");
       assert.ok(collateralVault.owner.equals(lendingMarketPda), "Collateral vault's owner mismatch");
       assert.equal(collateralVault.amount, BigInt(0), "Initial amount in the collateral vault should be zero");
 
       // Verify the properties of the loan vault token account
       const loanVault = await getAccount(provider.connection, loanVaultPda);
-      assert.ok(loanVault.mint.equals(loanMint));
+      assert.ok(loanVault.mint.equals(loanMintPda));
       assert.ok(loanVault.owner.equals(lendingMarketPda));
       assert.equal(loanVault.amount, BigInt(0), "Initial amount in the loan vault should be zero");
     });
@@ -124,7 +112,7 @@ describe("lending-solana", () => {
     it("Should fail when a malicious user tries to create a user account for another user", async () => {
       const maliciousUser = anchor.web3.Keypair.generate();
       const victimUser = anchor.web3.Keypair.generate();
-      const [victimUserAccountPda] = getPda("user-account", victimUser.publicKey);
+      const [victimUserAccountPda] = getPda(USER_ACCOUNT_SEED, victimUser.publicKey);
 
       let flag = "This should fail";
 
@@ -149,7 +137,7 @@ describe("lending-solana", () => {
     it("Should succeed when a user creates his or her own user account", async () => {
       const user = anchor.web3.Keypair.generate();
       await airdrop(provider.connection, user.publicKey);
-      const [userAccountPda] = getPda("user-account", user.publicKey);
+      const [userAccountPda] = getPda(USER_ACCOUNT_SEED, user.publicKey);
 
       await program.methods.createUserAccount().accounts({
         user: user.publicKey,
@@ -177,20 +165,11 @@ describe("lending-solana", () => {
       const victimUserAssociatedTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         victimUser,
-        collateralMint,
+        collateralMintPda,
         victimUser.publicKey
       );
 
-      await mintTo(
-        provider.connection,
-        payer,
-        collateralMint,
-        victimUserAssociatedTokenAccount,
-        payer,
-        1000000000
-      );
-
-      const [maliciousUserAccountPda] = getPda("user-account", maliciousUser.publicKey);
+      const [maliciousUserAccountPda] = getPda(USER_ACCOUNT_SEED, maliciousUser.publicKey);
       await program.methods.createUserAccount().accounts({
         user: maliciousUser.publicKey,
         userAccount: maliciousUserAccountPda,
@@ -204,6 +183,7 @@ describe("lending-solana", () => {
           user: maliciousUser.publicKey,
           userAccount: maliciousUserAccountPda,
           lendingMarket: lendingMarketPda,
+          collateralMint: collateralMintPda,
           userCollateralTokenAccount: victimUserAssociatedTokenAccount, // Maliciously using victim's token account
           collateralVault: collateralVaultPda,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -212,7 +192,10 @@ describe("lending-solana", () => {
         assert.fail("Should have thrown an error due to an unauthorized collateral deposit");
       } catch (err) {
         flag = "Failed";
-        assert.isTrue(err.message.includes("owner does not match"), "Expected ownership error when trying to transfer from another user's token account");
+        assert.isTrue(
+          err.message.includes("does not own the provided collateral token"),
+          "Expected ownership error when trying to deposit using another user's token account"
+        );
       }
 
       assert.strictEqual(flag, "Failed", "A malicious user should not be able to deposit collateral from another user's account");
@@ -225,20 +208,11 @@ describe("lending-solana", () => {
       const userAssociatedTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         user,
-        collateralMint,
+        collateralMintPda,
         user.publicKey
       );
 
-      await mintTo(
-        provider.connection,
-        payer,
-        collateralMint,
-        userAssociatedTokenAccount,
-        payer,
-        1000000000
-      );
-
-      const [userAccountPda] = getPda("user-account", user.publicKey);
+      const [userAccountPda] = getPda(USER_ACCOUNT_SEED, user.publicKey);
       await program.methods.createUserAccount().accounts({
         user: user.publicKey,
         userAccount: userAccountPda,
@@ -250,6 +224,7 @@ describe("lending-solana", () => {
         user: user.publicKey,
         userAccount: userAccountPda,
         lendingMarket: lendingMarketPda,
+        collateralMint: collateralMintPda,
         userCollateralTokenAccount: userAssociatedTokenAccount,
         collateralVault: collateralVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -264,6 +239,80 @@ describe("lending-solana", () => {
   });
 
   describe("Borrow Token", () => {
+    it("Should fail when the loan vault does not have enough liquidity to lend out tokens", async () => {
+      const user = anchor.web3.Keypair.generate();
+      await airdrop(provider.connection, user.publicKey);
+
+      const userAssociatedCollateralTokenAccount = await createAssociatedTokenAccount(
+        provider.connection,
+        user,
+        collateralMintPda,
+        user.publicKey
+      );
+      const userAssociatedLoanTokenAccount = await createAssociatedTokenAccount(
+        provider.connection,
+        user,
+        loanMintPda,
+        user.publicKey
+      );
+
+      const [userAccountPda] = getPda(USER_ACCOUNT_SEED, user.publicKey);
+      await program.methods
+        .createUserAccount()
+        .accounts({
+          user: user.publicKey,
+          userAccount: userAccountPda,
+          lendingMarket: lendingMarketPda,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      await program.methods
+        .depositCollateral(new anchor.BN(1000))
+        .accounts({
+          user: user.publicKey,
+          userAccount: userAccountPda,
+          lendingMarket: lendingMarketPda,
+          collateralMint: collateralMintPda,
+          userCollateralTokenAccount: userAssociatedCollateralTokenAccount,
+          collateralVault: collateralVaultPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([user])
+        .rpc();
+
+      let flag = "This should fail";
+      try {
+        await program.methods
+          .borrowToken(new anchor.BN(10))
+          .accounts({
+            user: user.publicKey,
+            userAccount: userAccountPda,
+            lendingMarket: lendingMarketPda,
+            userLoanTokenAccount: userAssociatedLoanTokenAccount,
+            loanVault: loanVaultPda,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .signers([user])
+          .rpc();
+
+        assert.fail("Should have thrown an error due to insufficient loan vault liquidity");
+      } catch (err) {
+        flag = "Failed";
+        assert.isTrue(
+          err.toString().includes("Lending market does not have enough tokens in the loan vault"),
+          "Expected insufficient liquidity error"
+        );
+      }
+
+      assert.strictEqual(
+        flag,
+        "Failed",
+        "Borrowing should fail when the loan vault lacks liquidity"
+      );
+    });
+
     it("Should fail when a user tries to borrow more than maximum allowable amount based on collateral", async () => {
       const user = anchor.web3.Keypair.generate();
       await airdrop(provider.connection, user.publicKey);
@@ -271,28 +320,13 @@ describe("lending-solana", () => {
       const userAssociatedTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         user,
-        collateralMint,
+        collateralMintPda,
         user.publicKey
       );
 
-      await mintTo(
-        provider.connection,
-        payer,
-        collateralMint,
-        userAssociatedTokenAccount,
-        payer,
-        100
-      );
-      await mintTo(
-        provider.connection,
-        payer,
-        loanMint,
-        loanVaultPda,
-        payer,
-        100000000
-      );
+      await fundLoanVault(100000000);
 
-      const [userAccountPda] = getPda("user-account", user.publicKey);
+      const [userAccountPda] = getPda(USER_ACCOUNT_SEED, user.publicKey);
       await program.methods.createUserAccount().accounts({
         user: user.publicKey,
         userAccount: userAccountPda,
@@ -304,6 +338,7 @@ describe("lending-solana", () => {
         user: user.publicKey,
         userAccount: userAccountPda,
         lendingMarket: lendingMarketPda,
+        collateralMint: collateralMintPda,
         userCollateralTokenAccount: userAssociatedTokenAccount,
         collateralVault: collateralVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -339,27 +374,12 @@ describe("lending-solana", () => {
       const victimUserAssociatedTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         victimUser,
-        collateralMint,
+        collateralMintPda,
         victimUser.publicKey
       );
-      await mintTo(
-        provider.connection,
-        payer,
-        collateralMint,
-        victimUserAssociatedTokenAccount,
-        payer,
-        1000000000
-      );
-      await mintTo(
-        provider.connection,
-        payer,
-        loanMint,
-        loanVaultPda,
-        payer,
-        1000000000
-      );
+      await fundLoanVault(1000000000);
 
-      const [victimUserAccountPda] = getPda("user-account", victimUser.publicKey);
+      const [victimUserAccountPda] = getPda(USER_ACCOUNT_SEED, victimUser.publicKey);
       await program.methods.createUserAccount().accounts({
         user: victimUser.publicKey,
         userAccount: victimUserAccountPda,
@@ -370,6 +390,7 @@ describe("lending-solana", () => {
         user: victimUser.publicKey,
         userAccount: victimUserAccountPda,
         lendingMarket: lendingMarketPda,
+        collateralMint: collateralMintPda,
         userCollateralTokenAccount: victimUserAssociatedTokenAccount,
         collateralVault: collateralVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -380,7 +401,7 @@ describe("lending-solana", () => {
       const maliciousUserAssociatedLoanTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         maliciousUser,
-        loanMint,
+        loanMintPda,
         maliciousUser.publicKey
       );
       try {
@@ -421,34 +442,19 @@ describe("lending-solana", () => {
       const userAssociatedCollateralTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         user,
-        collateralMint,
+        collateralMintPda,
         user.publicKey
       );
       const userAssociatedLoanTokenAccount = await createAssociatedTokenAccount(
         provider.connection,
         user,
-        loanMint,
+        loanMintPda,
         user.publicKey
       );
 
-      await mintTo(
-        provider.connection,
-        payer,
-        collateralMint,
-        userAssociatedCollateralTokenAccount,
-        payer,
-        1000000000
-      );
-      await mintTo(
-        provider.connection,
-        payer,
-        loanMint,
-        loanVaultPda,
-        payer,
-        1000000000
-      );
+      await fundLoanVault(1000000000);
 
-      const [userAccountPda] = getPda("user-account", user.publicKey);
+      const [userAccountPda] = getPda(USER_ACCOUNT_SEED, user.publicKey);
       await program.methods.createUserAccount().accounts({
         user: user.publicKey,
         userAccount: userAccountPda,
@@ -460,6 +466,7 @@ describe("lending-solana", () => {
         user: user.publicKey,
         userAccount: userAccountPda,
         lendingMarket: lendingMarketPda,
+        collateralMint: collateralMintPda,
         userCollateralTokenAccount: userAssociatedCollateralTokenAccount,
         collateralVault: collateralVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -479,7 +486,6 @@ describe("lending-solana", () => {
       const userAccount = await program.account.userAccount.fetch(userAccountPda);
       const lendingMarket = await program.account.lendingMarket.fetch(lendingMarketPda);
       const userLoanAccount = await getAccount(provider.connection, userAssociatedLoanTokenAccount);
-      const loanVaultAccount = await getAccount(provider.connection, loanVaultPda);
 
       assert.ok(userAccount.borrowedAmount.eq(borrowAmount), "User borrowed amount mismatch");
       assert.ok(lendingMarket.borrowedAmount.eq(borrowAmount), "Lending market borrowed amount mismatch");
@@ -492,4 +498,52 @@ describe("lending-solana", () => {
       );
     });
   });
+
+  describe("Fund Loan Vault", () => {
+    it("Should succeed when called by the right market authority", async () => {
+      const initialVault = await getAccount(provider.connection, loanVaultPda);
+      const amount = new anchor.BN(5000);
+      await program.methods.fundLoanVault(amount).accounts({
+        authority: payer.publicKey,
+        lendingMarket: lendingMarketPda,
+        loanMint: loanMintPda,
+        loanVault: loanVaultPda,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([payer]).rpc();
+
+      const updatedVault = await getAccount(provider.connection, loanVaultPda);
+      assert.equal(
+        updatedVault.amount,
+        initialVault.amount + BigInt(amount.toNumber()),
+        "Loan vault should increase by funded amount"
+      );
+    });
+
+    it("Should fail when a non-authority tries to fund the vault", async () => {
+      const stranger = anchor.web3.Keypair.generate();
+      await airdrop(provider.connection, stranger.publicKey);
+
+      let flag = "This should fail";
+      try {
+        await program.methods.fundLoanVault(new anchor.BN(100)).accounts({
+          authority: stranger.publicKey,
+          lendingMarket: lendingMarketPda,
+          loanMint: loanMintPda,
+          loanVault: loanVaultPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([stranger]).rpc();
+
+        assert.fail("Should have thrown an error due to an unauthorized attempt to fund the loan vault");
+      } catch (err) {
+        flag = "Failed";
+        assert.isTrue(
+          err.toString().includes("authority") || err.toString().includes("constraint"),
+          "Expected authority constraint error"
+        );
+      }
+
+      assert.strictEqual(flag, "Failed", "Non-authority funding should fail");
+    });
+  });
+
 });
