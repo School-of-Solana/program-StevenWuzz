@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::instructions::*;
+use anchor_lang::prelude::*;
 
-pub mod instructions;
 pub mod errors;
+pub mod instructions;
 pub mod states;
 
 declare_id!("8L5TT5QKsktaowcfstwz2h6aNg5Q9izfuLLq76wyJqZ");
@@ -19,11 +19,18 @@ pub mod lending_solana {
         instructions::create_user_account(ctx)
     }
 
-    pub fn deposit_collateral(ctx: Context<DepositCollateral>, collateral_amount: u64) -> Result<()> {
+    pub fn deposit_collateral(
+        ctx: Context<DepositCollateral>,
+        collateral_amount: u64,
+    ) -> Result<()> {
         instructions::deposit_collateral(ctx, collateral_amount)
     }
 
     pub fn borrow_token(ctx: Context<BorrowToken>, borrow_amount: u64) -> Result<()> {
         instructions::borrow_token(ctx, borrow_amount)
+    }
+
+    pub fn fund_loan_vault(ctx: Context<FundLoanVault>, amount: u64) -> Result<()> {
+        instructions::fund_loan_vault(ctx, amount)
     }
 }

@@ -1,16 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, Mint, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::{errors::LendingError, states::*};
+use crate::states::*;
 
 pub fn initialize_lending_market(ctx: Context<InitializeLendingMarket>) -> Result<()> {
-    require!(
-        ctx.accounts.collateral_mint.key() != ctx.accounts.loan_mint.key(),
-        LendingError::IdenticalCollateralAndLoanMints,
-    );
-
     let lending_market = &mut ctx.accounts.lending_market;
 
+    lending_market.authority = ctx.accounts.payer.key();
     lending_market.collateral_mint = ctx.accounts.collateral_mint.key();
     lending_market.loan_mint = ctx.accounts.loan_mint.key();
     lending_market.collateral_vault = ctx.accounts.collateral_vault.key();
@@ -29,10 +25,10 @@ pub struct InitializeLendingMarket<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-        init, 
+        init,
         payer = payer,
-        space = 8 + LendingMarket::INIT_SPACE,
-        seeds = [b"lending-market"],
+        space = LendingMarket::LEN,
+        seeds = [LENDING_MARKET_SEED],
         bump
     )]
     pub lending_market: Account<'info, LendingMarket>,
@@ -40,22 +36,40 @@ pub struct InitializeLendingMarket<'info> {
     #[account(
         init,
         payer = payer,
-        seeds = [b"collateral-vault", lending_market.key().as_ref()],
+        seeds = [COLLATERAL_MINT_SEED, lending_market.key().as_ref()],
+        bump,
+        mint::decimals = 6,
+        mint::authority = lending_market,
+        mint::freeze_authority = lending_market,
+    )]
+    pub collateral_mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [COLLATERAL_VAULT_SEED, lending_market.key().as_ref()],
         bump,
         token::mint = collateral_mint,
         token::authority = lending_market,
     )]
     pub collateral_vault: Account<'info, TokenAccount>,
-    pub collateral_mint: Account<'info, Mint>,
     #[account(
         init,
         payer = payer,
-        seeds = [b"loan-vault", lending_market.key().as_ref()],
+        seeds = [LOAN_MINT_SEED, lending_market.key().as_ref()],
+        bump,
+        mint::decimals = 6,
+        mint::authority = lending_market,
+        mint::freeze_authority = lending_market,
+    )]
+    pub loan_mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [LOAN_VAULT_SEED, lending_market.key().as_ref()],
         bump,
         token::mint = loan_mint,
         token::authority = lending_market,
     )]
     pub loan_vault: Account<'info, TokenAccount>,
-    pub loan_mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
 }

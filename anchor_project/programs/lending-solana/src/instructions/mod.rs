@@ -9,3 +9,6 @@ pub mod deposit_collateral;
 
 pub use borrow_token::*;
 pub mod borrow_token;
+
+pub use fund_loan_vault::*;
+pub mod fund_loan_vault;

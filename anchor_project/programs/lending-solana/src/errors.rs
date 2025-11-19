@@ -18,6 +18,8 @@ pub enum LendingError {
     MistmatchedCollateralMint,
     #[msg("The lending market does not own the provided loan vault")]
     MismatchedLoanVaultOwner,
+    #[msg("The user does not own the provided collateral token account")]
+    MismatchedCollateralTokenAccountOwner,
     #[msg("Collateral and loan mints cannnot be the same")]
     IdenticalCollateralAndLoanMints,
     #[msg("Lending market does not have enough tokens in the loan vault to lend out")]
