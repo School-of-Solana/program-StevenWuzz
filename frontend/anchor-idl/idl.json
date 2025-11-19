@@ -1,0 +1,570 @@
+{
+  "address": "8L5TT5QKsktaowcfstwz2h6aNg5Q9izfuLLq76wyJqZ",
+  "metadata": {
+    "name": "lending_solana",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "borrow_token",
+      "discriminator": [
+        80,
+        33,
+        22,
+        50,
+        103,
+        128,
+        181,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true,
+          "relations": [
+            "user_account"
+          ]
+        },
+        {
+          "name": "user_account",
+          "writable": true
+        },
+        {
+          "name": "lending_market",
+          "writable": true,
+          "relations": [
+            "user_account"
+          ]
+        },
+        {
+          "name": "user_loan_token_account",
+          "writable": true
+        },
+        {
+          "name": "loan_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "borrow_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_user_account",
+      "discriminator": [
+        146,
+        68,
+        100,
+        69,
+        63,
+        46,
+        182,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "lending_market"
+        },
+        {
+          "name": "user_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deposit_collateral",
+      "discriminator": [
+        156,
+        131,
+        142,
+        116,
+        146,
+        247,
+        162,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true,
+          "relations": [
+            "user_account"
+          ]
+        },
+        {
+          "name": "user_account",
+          "writable": true
+        },
+        {
+          "name": "lending_market",
+          "writable": true,
+          "relations": [
+            "user_account"
+          ]
+        },
+        {
+          "name": "collateral_mint",
+          "writable": true
+        },
+        {
+          "name": "user_collateral_token_account",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "collateral_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_loan_vault",
+      "discriminator": [
+        253,
+        17,
+        150,
+        206,
+        74,
+        253,
+        123,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "lending_market",
+          "writable": true
+        },
+        {
+          "name": "loan_mint",
+          "writable": true
+        },
+        {
+          "name": "loan_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_lending_market",
+      "discriminator": [
+        138,
+        174,
+        14,
+        19,
+        121,
+        176,
+        216,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "lending_market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  45,
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "collateral_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  45,
+                  109,
+                  105,
+                  110,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lending_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lending_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "loan_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  97,
+                  110,
+                  45,
+                  109,
+                  105,
+                  110,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lending_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "loan_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  97,
+                  110,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lending_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "LendingMarket",
+      "discriminator": [
+        246,
+        114,
+        50,
+        98,
+        72,
+        157,
+        28,
+        120
+      ]
+    },
+    {
+      "name": "UserAccount",
+      "discriminator": [
+        211,
+        33,
+        136,
+        16,
+        186,
+        110,
+        242,
+        127
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "UserCollateralOverflow",
+      "msg": "User's collateral amount has overflowed"
+    },
+    {
+      "code": 6001,
+      "name": "UserBorrowOverflow",
+      "msg": "User's borrow amount has overflowed"
+    },
+    {
+      "code": 6002,
+      "name": "MarketBorrowOverflow",
+      "msg": "Lending market's borrow amount has overflowed"
+    },
+    {
+      "code": 6003,
+      "name": "UserMaxBorrowExceeded",
+      "msg": "User's total borrow amount will exceed the maximum allowable borrow"
+    },
+    {
+      "code": 6004,
+      "name": "MarketCollateralOverflow",
+      "msg": "Lending market's total collateral has overflowed"
+    },
+    {
+      "code": 6005,
+      "name": "MismatchedCollateralVaultOwner",
+      "msg": "The lending market does not own the provided collateral vault"
+    },
+    {
+      "code": 6006,
+      "name": "MistmatchedCollateralMint",
+      "msg": "The provided collateral mint does not match the lending market's collateral mint"
+    },
+    {
+      "code": 6007,
+      "name": "MismatchedLoanVaultOwner",
+      "msg": "The lending market does not own the provided loan vault"
+    },
+    {
+      "code": 6008,
+      "name": "MismatchedCollateralTokenAccountOwner",
+      "msg": "The user does not own the provided collateral token account"
+    },
+    {
+      "code": 6009,
+      "name": "IdenticalCollateralAndLoanMints",
+      "msg": "Collateral and loan mints cannnot be the same"
+    },
+    {
+      "code": 6010,
+      "name": "InsufficientLoanVaultLiquidity",
+      "msg": "Lending market does not have enough tokens in the loan vault to lend out"
+    }
+  ],
+  "types": [
+    {
+      "name": "LendingMarket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "loan_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "loan_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "interest_rate_bps",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "borrowed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "lending_market",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposited_collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "borrowed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
